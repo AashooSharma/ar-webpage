@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Face Detection Attendance</title>
+    <title>Face Detection Attendance System</title>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-detection"></script>
     <style>
@@ -32,6 +32,11 @@
             border-radius: 5px;
             font-size: 18px;
         }
+        input, button {
+            padding: 10px;
+            margin: 10px;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
@@ -41,25 +46,32 @@
     <!-- Video feed from webcam -->
     <video id="video" width="640" height="480" autoplay></video>
 
+    <!-- Input field to enter the name -->
+    <input type="text" id="name" placeholder="Enter your name" />
+    <button id="registerButton">Register Face</button>
+
     <!-- Attendance log -->
     <ul id="attendance-log"></ul>
 
     <script>
+        let model;
+        let faceData = {};  // Store registered faces with name
+
         async function setupWebcam() {
             const video = document.getElementById('video');
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } }); // 'user' for front camera
             video.srcObject = stream;
         }
 
         async function detectFace() {
-            const video = document.getElementById('video');
-            const model = await faceDetection.load(faceDetection.SupportedPackages.mediapipe);
+            model = await faceDetection.load(faceDetection.SupportedPackages.mediapipe);
 
             // To keep track of faces detected and logged
             const detectedFaces = new Set();
 
             // Setup the model detection
             const detect = async () => {
+                const video = document.getElementById('video');
                 const predictions = await model.estimateFaces({ input: video });
 
                 if (predictions.length > 0) {
@@ -71,7 +83,13 @@
                         // If the face has not been detected before, log it as an attendance
                         if (!detectedFaces.has(faceID)) {
                             detectedFaces.add(faceID);
-                            logAttendance();
+                            const name = document.getElementById('name').value;
+                            if (name) {
+                                faceData[faceID] = name; // Register face with name
+                                logAttendance(name);
+                            } else {
+                                logAttendance("Unknown");
+                            }
                         }
                     });
                 }
@@ -82,14 +100,23 @@
             detect();
         }
 
-        function logAttendance() {
+        function logAttendance(name) {
             const attendanceLog = document.getElementById('attendance-log');
             const time = new Date().toLocaleTimeString();
-            const name = `Person ${attendanceLog.children.length + 1}`; // Example name (you can modify it)
             const listItem = document.createElement('li');
             listItem.textContent = `${name} detected at ${time}`;
             attendanceLog.appendChild(listItem);
         }
+
+        // Button to register the face
+        document.getElementById('registerButton').addEventListener('click', () => {
+            const name = document.getElementById('name').value;
+            if (name) {
+                alert(`Your face has been registered as ${name}`);
+            } else {
+                alert('Please enter your name to register.');
+            }
+        });
 
         // Initialize the webcam and face detection
         setupWebcam();
