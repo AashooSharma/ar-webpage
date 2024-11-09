@@ -3,70 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hand Detection AR - Back Camera</title>
-    <!-- Load A-Frame and TensorFlow.js -->
+    <title>AR Model in Camera View</title>
+    <!-- Load A-Frame -->
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose"></script>
-    <style>
-        body { margin: 0; overflow: hidden; }
-        canvas { position: absolute; top: 0; left: 0; }
-    </style>
+    <!-- Load AR.js for AR functionalities -->
+    <script src="https://cdn.jsdelivr.net/npm/aframe-ar.js"></script>
 </head>
-<body>
+<body style="margin: 0; overflow: hidden;">
 
-    <!-- A-Frame Scene for AR -->
-    <a-scene embedded>
-        <!-- 3D Model (drone model) -->
-        <a-entity id="drone-model" gltf-model="models/your-drone-model.glb" 
-                  position="0 1 -2" scale="0.3 0.3 0.3" visible="false">
-        </a-entity>
-        <!-- Camera -->
+    <!-- A-Frame Scene -->
+    <a-scene embedded arjs>
+        <!-- Marker for the model placement -->
+        <a-marker type="pattern" url="your-marker.patt">
+            <!-- 3D Model (e.g., drone) -->
+            <a-entity id="drone-model" gltf-model="models/your-drone-model.glb"
+                      position="0 0 0" scale="0.5 0.5 0.5">
+            </a-entity>
+        </a-marker>
+
+        <!-- Camera to show the live feed -->
         <a-entity camera></a-entity>
     </a-scene>
 
-    <script>
-        async function loadHandposeModel() {
-            const model = await handpose.load();
-            detectHands(model);
-        }
-
-        async function detectHands(model) {
-            const video = document.createElement('video');
-            video.width = 640;
-            video.height = 480;
-            document.body.appendChild(video);
-
-            // Request the back camera using facingMode: "environment"
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: "environment" }
-            });
-            video.srcObject = stream;
-            video.play();
-
-            video.addEventListener('loadeddata', async () => {
-                const droneModel = document.querySelector('#drone-model');
-
-                while (true) {
-                    const predictions = await model.estimateHands(video);
-
-                    if (predictions.length > 0) {
-                        droneModel.setAttribute('visible', 'true');
-
-                        const handX = predictions[0].landmarks[9][0] / 100 - 3.2;
-                        const handY = -predictions[0].landmarks[9][1] / 100 + 1.5;
-
-                        droneModel.setAttribute('position', `${handX} ${handY} -2`);
-                    } else {
-                        droneModel.setAttribute('visible', 'false');
-                    }
-
-                    await tf.nextFrame();
-                }
-            });
-        }
-
-        loadHandposeModel();
-    </script>
 </body>
 </html>
