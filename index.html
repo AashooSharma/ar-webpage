@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hand Detection AR</title>
+    <!-- Load A-Frame and TensorFlow.js -->
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose"></script>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { position: absolute; top: 0; left: 0; }
+    </style>
+</head>
+<body>
+
+    <!-- A-Frame Scene for AR -->
+    <a-scene embedded>
+        <!-- 3D Model (drone model) -->
+        <a-entity id="drone-model" gltf-model="models/your-drone-model.glb" 
+                  position="0 1 -2" scale="0.3 0.3 0.3" visible="false">
+        </a-entity>
+        <!-- Camera -->
+        <a-entity camera></a-entity>
+    </a-scene>
+
+    <script>
+        async function loadHandposeModel() {
+            const model = await handpose.load();
+            detectHands(model);
+        }
+
+        async function detectHands(model) {
+            const video = document.createElement('video');
+            video.width = 640;
+            video.height = 480;
+            document.body.appendChild(video);
+
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+            video.play();
+
+            video.addEventListener('loadeddata', async () => {
+                const droneModel = document.querySelector('#drone-model');
+
+                while (true) {
+                    const predictions = await model.estimateHands(video);
+
+                    if (predictions.length > 0) {
+                        droneModel.setAttribute('visible', 'true');
+
+                        const handX = predictions[0].landmarks[9][0] / 100 - 3.2;
+                        const handY = -predictions[0].landmarks[9][1] / 100 + 1.5;
+
+                        droneModel.setAttribute('position', `${handX} ${handY} -2`);
+                    } else {
+                        droneModel.setAttribute('visible', 'false');
+                    }
+
+                    await tf.nextFrame();
+                }
+            });
+        }
+
+        loadHandposeModel();
+    </script>
+</body>
+</html>
