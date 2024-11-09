@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Photo Capture</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.9.1/jszip.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+        video {
+            border: 2px solid black;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px;
+            font-size: 16px;
+            margin: 10px;
+        }
+        input {
+            padding: 10px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Student Photo Capture</h1>
+
+    <!-- Start button -->
+    <button id="startButton">Start</button>
+
+    <!-- Camera feed -->
+    <video id="video" width="640" height="480" autoplay></video>
+
+    <!-- Input for student name -->
+    <input type="text" id="studentName" placeholder="Enter Student Name" disabled />
+
+    <!-- Button to capture the images -->
+    <button id="captureButton" disabled>Capture Photos</button>
+
+    <script>
+        const startButton = document.getElementById('startButton');
+        const captureButton = document.getElementById('captureButton');
+        const studentNameInput = document.getElementById('studentName');
+        const videoElement = document.getElementById('video');
+        
+        let imageCount = 0;
+        const images = [];
+        let zip = new JSZip();
+
+        // Setup webcam
+        async function setupWebcam() {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            videoElement.srcObject = stream;
+        }
+
+        // Start camera when 'Start' button is clicked
+        startButton.addEventListener('click', () => {
+            studentNameInput.disabled = false;
+            captureButton.disabled = false;
+            setupWebcam(); // Start the webcam
+            startButton.disabled = true; // Disable start button after it's clicked
+        });
+
+        // Capture images
+        captureButton.addEventListener('click', () => {
+            const studentName = studentNameInput.value.trim();
+            if (!studentName) {
+                alert('Please enter the student name!');
+                return;
+            }
+
+            // Create a canvas to capture the video frame
+            const canvas = document.createElement('canvas');
+            canvas.width = 640;
+            canvas.height = 480;
+            const context = canvas.getContext('2d');
+            context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+
+            // Get the image data URL and save it to the images array
+            const imageData = canvas.toDataURL('image/png');
+            images.push(imageData);
+
+            // Add image to the zip file
+            zip.file(`${studentName}_${imageCount + 1}.png`, imageData.split(',')[1], { base64: true });
+
+            // Increment the image count
+            imageCount++;
+
+            // Check if 10 images have been captured
+            if (imageCount === 10) {
+                alert('Captured 10 images!');
+                zip.generateAsync({ type: 'blob' }).then(function(content) {
+                    const zipBlob = content;
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(zipBlob);
+                    link.download = `${studentName}.zip`; // Name the zip file after the student
+                    link.click(); // Trigger the download
+                });
+                // Reset for the next student
+                imageCount = 0;
+                images.length = 0;
+            }
+        });
+    </script>
+
+</body>
+</html>
