@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Detection Attendance</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-detection"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+        video {
+            border: 2px solid black;
+            margin-bottom: 20px;
+        }
+        #attendance-log {
+            list-style-type: none;
+            padding: 0;
+        }
+        #attendance-log li {
+            background-color: #4CAF50;
+            color: white;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Face Detection Attendance System</h1>
+
+    <!-- Video feed from webcam -->
+    <video id="video" width="640" height="480" autoplay></video>
+
+    <!-- Attendance log -->
+    <ul id="attendance-log"></ul>
+
+    <script>
+        async function setupWebcam() {
+            const video = document.getElementById('video');
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            video.srcObject = stream;
+        }
+
+        async function detectFace() {
+            const video = document.getElementById('video');
+            const model = await faceDetection.load(faceDetection.SupportedPackages.mediapipe);
+
+            // To keep track of faces detected and logged
+            const detectedFaces = new Set();
+
+            // Setup the model detection
+            const detect = async () => {
+                const predictions = await model.estimateFaces({ input: video });
+
+                if (predictions.length > 0) {
+                    predictions.forEach((prediction) => {
+                        // Get the bounding box of the detected face
+                        const { topLeft, bottomRight } = prediction.boundingBox;
+                        const faceID = `${topLeft[0]}-${topLeft[1]}-${bottomRight[0]}-${bottomRight[1]}`;
+
+                        // If the face has not been detected before, log it as an attendance
+                        if (!detectedFaces.has(faceID)) {
+                            detectedFaces.add(faceID);
+                            logAttendance();
+                        }
+                    });
+                }
+
+                requestAnimationFrame(detect);  // Continue detection in a loop
+            };
+
+            detect();
+        }
+
+        function logAttendance() {
+            const attendanceLog = document.getElementById('attendance-log');
+            const time = new Date().toLocaleTimeString();
+            const name = `Person ${attendanceLog.children.length + 1}`; // Example name (you can modify it)
+            const listItem = document.createElement('li');
+            listItem.textContent = `${name} detected at ${time}`;
+            attendanceLog.appendChild(listItem);
+        }
+
+        // Initialize the webcam and face detection
+        setupWebcam();
+        detectFace();
+    </script>
+
+</body>
+</html>
