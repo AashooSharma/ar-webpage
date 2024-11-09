@@ -19,11 +19,6 @@
         video {
             border: 2px solid black;
         }
-        canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-        }
         .student-name {
             font-size: 16px;
             font-weight: bold;
@@ -38,82 +33,90 @@
 <body>
 
     <h1>Face Recognition Attendance</h1>
-    <video id="video" width="640" height="480" autoplay></video>
-    <canvas id="canvas" width="640" height="480"></canvas>
+    <video id="video" width="640" height="480" autoplay playsinline></video>
+    <canvas id="overlay" width="640" height="480"></canvas>
+    <div class="student-name" id="studentName"></div>
 
     <script>
-        let videoElement = document.getElementById('video');
-        let canvasElement = document.getElementById('canvas');
-        let studentNameElement = document.createElement('div');
-        document.body.appendChild(studentNameElement);
+        const videoElement = document.getElementById('video');
+        const overlay = document.getElementById('overlay');
+        const studentNameElement = document.getElementById('studentName');
 
-        // Load models from face-api.js
+        // Load face-api.js models
         Promise.all([
-            faceapi.nets.ssdMobilenetv1.loadFromUri('/models'),
-            faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
-            faceapi.nets.faceRecognitionNet.loadFromUri('/models')
+            faceapi.nets.ssdMobilenetv1.loadFromUri('models'),
+            faceapi.nets.faceLandmark68Net.loadFromUri('models'),
+            faceapi.nets.faceRecognitionNet.loadFromUri('models')
         ]).then(startVideo);
 
-        // Set up video stream
+        // Access the back camera
         async function startVideo() {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
-            videoElement.srcObject = stream;
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' }
+                });
+                videoElement.srcObject = stream;
+            } catch (error) {
+                console.error("Camera error: ", error);
+            }
         }
 
-        // Detect faces and recognize
+        // Start detecting faces once the video starts playing
         videoElement.addEventListener('play', () => {
-            const canvas = faceapi.createCanvasFromMedia(videoElement);
-            document.body.append(canvas);
             const displaySize = { width: videoElement.width, height: videoElement.height };
-            faceapi.matchDimensions(canvas, displaySize);
+            faceapi.matchDimensions(overlay, displaySize);
 
             setInterval(async () => {
                 const detections = await faceapi.detectAllFaces(videoElement)
                     .withFaceLandmarks()
                     .withFaceDescriptors();
 
-                // Resize and display detected faces
-                canvas?.clear();
+                // Clear overlay canvas
+                const ctx = overlay.getContext('2d');
+                ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+                // Resize and draw the detections
                 const resizedDetections = faceapi.resizeResults(detections, displaySize);
-                canvas?.detectAllFaces(videoElement).draw(resizedDetections);
+                faceapi.draw.drawDetections(overlay, resizedDetections);
 
-                // Check each detection for matching faces
+                // Identify detected faces
                 for (let i = 0; i < detections.length; i++) {
-                    const descriptor = detections[i].descriptor;
-                    let bestMatch = null;
-
-                    // Load pre-saved face descriptors (match against student faces)
-                    const students = await getStudentDescriptors();
-
-                    // Compare face descriptor with known students
-                    for (let student of students) {
-                        const distance = faceapi.euclideanDistance(descriptor, student.descriptor);
-                        if (!bestMatch || distance < bestMatch.distance) {
-                            bestMatch = { name: student.name, distance: distance };
-                        }
-                    }
-
-                    if (bestMatch && bestMatch.distance < 0.6) { // Threshold for match
-                        studentNameElement.textContent = bestMatch.name;
-                        studentNameElement.style.left = `${detections[i].detection.box.x}px`;
-                        studentNameElement.style.top = `${detections[i].detection.box.y}px`;
+                    const bestMatch = await recognizeFace(detections[i].descriptor);
+                    if (bestMatch) {
+                        const box = resizedDetections[i].detection.box;
+                        studentNameElement.style.top = `${box.top}px`;
+                        studentNameElement.style.left = `${box.left}px`;
+                        studentNameElement.textContent = bestMatch;
                     }
                 }
             }, 100);
         });
 
-        // Load student faces and their descriptors
-        async function getStudentDescriptors() {
+        // Match face descriptors with known students
+        async function recognizeFace(queryDescriptor) {
+            const knownDescriptors = await loadKnownFaces();
+            let bestMatch = null;
+            let minDistance = 0.6; // Threshold
+
+            for (const student of knownDescriptors) {
+                const distance = faceapi.euclideanDistance(queryDescriptor, student.descriptor);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    bestMatch = student.name;
+                }
+            }
+            return bestMatch;
+        }
+
+        // Load face descriptors for known students
+        async function loadKnownFaces() {
             const students = [];
-            const studentNames = ['student1', 'student2'];  // Example student names
+            const studentNames = ['student1', 'student2']; // Add more students as needed
             for (let name of studentNames) {
-                const image = await faceapi.fetchImage(`/students_faces/${name}.jpg`);
-                const detections = await faceapi.detectSingleFace(image).withFaceLandmarks().withFaceDescriptor();
+                const img = await faceapi.fetchImage(`students_faces/${name}.jpg`);
+                const detections = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
                 if (detections) {
-                    students.push({
-                        name: name,
-                        descriptor: detections.descriptor
-                    });
+                    students.push({ name, descriptor: detections.descriptor });
                 }
             }
             return students;
