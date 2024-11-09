@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hand Detection AR</title>
+    <title>Hand Detection AR - Back Camera</title>
     <!-- Load A-Frame and TensorFlow.js -->
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
@@ -37,7 +37,10 @@
             video.height = 480;
             document.body.appendChild(video);
 
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            // Request the back camera using facingMode: "environment"
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: "environment" }
+            });
             video.srcObject = stream;
             video.play();
 
