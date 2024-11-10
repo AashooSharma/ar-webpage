@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Model Overlay Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        /* Overlay styling */
+        .overlay-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 9999;
+            pointer-events: none; /* Makes overlay non-interactive */
+        }
+
+        /* Main content styling */
+        .content {
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.9);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Main Content -->
+    <div class="content">
+        <h1>Welcome to My Website</h1>
+        <p>This is the main content of your page.</p>
+    </div>
+
+    <!-- 3D Model Overlay -->
+    <div class="overlay-container">
+        <iframe 
+            title="Mio - Anime Girl Character" 
+            frameborder="0" 
+            allow="autoplay; fullscreen; xr-spatial-tracking" 
+            src="https://sketchfab.com/models/1e41cf5f9ef744739bc8095176e6d2ea/embed?autostart=1&preload=1&transparent=1&ui_controls=0&ui_infos=0&ui_stop=0"
+            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+        </iframe>
+    </div>
+
+</body>
+</html>
